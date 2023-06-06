@@ -1,11 +1,13 @@
 -- IMPORTS
+import qualified Data.Map                 as M
 import           Data.Monoid
 import           System.Exit
 import           XMonad
-import           XMonad.Util.SpawnOnce (spawnOnce)
-
-import qualified Data.Map              as M
-import qualified XMonad.StackSet       as W
+import           XMonad.Hooks.ManageDocks
+import           XMonad.Layout.Spacing
+import qualified XMonad.StackSet          as W
+import           XMonad.Util.Run
+import           XMonad.Util.SpawnOnce    (spawnOnce)
 
 -- The preferred terminal program, which is used in a binding below and by
 -- certain contrib modules.
@@ -22,7 +24,7 @@ myClickJustFocuses = False
 
 -- Width of the window border in pixels.
 --
-myBorderWidth   = 3
+myBorderWidth   = 2
 
 -- modMask lets you specify which modkey you want to use. The default
 -- is mod1Mask ("left alt").  You may also consider using mod3Mask
@@ -44,7 +46,7 @@ myWorkspaces    = ["1","2","3","4","5","6","7","8","9"]
 
 -- Border colors for unfocused and focused windows, respectively.
 --
-myNormalBorderColor  = "#283c6a"
+myNormalBorderColor  = "#242432"
 myFocusedBorderColor = "#ff0044"
 
 ------------------------------------------------------------------------
@@ -66,11 +68,12 @@ myKeys conf@(XConfig {XMonad.modMask = modm}) = M.fromList $
 
     -- | OPEN firefox developer edition app
     , ((modm, xK_f  ), spawn "/opt/firefox-dev/firefox")
-
     -- | OPEN spotify app
+    , ((modm .|. shiftMask, xK_s ), spawn "spotify")
+    -- | OPEN Obsidian app
+    , ((modm .|. shiftMask, xK_o), spawn "/home/dyia/Applications/Obsidian-1.1.9.AppImage")
+    -- Rotate through the available layout algorithms
     , ((modm,               xK_space ), sendMessage NextLayout)
-  -- Rotate through the available layout algorithms
-
     --  Reset the layouts on the current workspace to default
     , ((modm .|. shiftMask, xK_space ), setLayout $ XMonad.layoutHook conf)
 
@@ -78,7 +81,7 @@ myKeys conf@(XConfig {XMonad.modMask = modm}) = M.fromList $
     , ((modm,               xK_n     ), refresh)
 
     -- Move focus to the next window
-    , ((modm,               xK_Tab   ), windows W.focusDown)
+    , ((mod1Mask,               xK_Tab   ), windows W.focusDown)
 
     -- Move focus to the next window
     , ((modm,               xK_j     ), windows W.focusDown)
@@ -176,9 +179,9 @@ myMouseBindings (XConfig {XMonad.modMask = modm}) = M.fromList $
 -- defaults, as xmonad preserves your old layout settings by default.
 --
 -- The available layouts.  Note that each layout is separated by |||,
--- which denotes layout choice.
+-- which denotes layout choice
 --
-myLayout = tiled ||| Mirror tiled ||| Full
+myLayout = avoidStruts $ spacing 4 $ tiled ||| Mirror tiled ||| Full
   where
      -- default tiling algorithm partitions the screen into two panes
      tiled   = Tall nmaster delta ratio
@@ -242,15 +245,17 @@ myLogHook = return ()
 -- By default, do nothing.
 myStartupHook = do
     spawnOnce "nitrogen --restore &"
-    spawnOnce "compton &"
+    spawnOnce "picom &"
+    spawnOnce "trayer --edge top --align right --width 5 --padding 5 --margin 5 &"
 
 ------------------------------------------------------------------------
 -- Now run xmonad with all the defaults we set up.
 
 -- Run xmonad with the settings you specify. No need to modify this.
 --
-main = xmonad defaults
-
+main = do
+  xmproc <- spawnPipe "xmobar -x 0 ~/.config/xmobar/xmobarrc"
+  xmonad $ docks defaults
 -- A structure containing your configuration settings, overriding
 -- fields in the default config. Any you don't override, will
 -- use the defaults defined in xmonad/XMonad/Config.hs
