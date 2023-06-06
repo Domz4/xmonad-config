@@ -245,9 +245,9 @@ myLogHook = return ()
 -- By default, do nothing.
 myStartupHook = do
     spawnOnce "nitrogen --restore &"
-    spawnOnce "picom &"
+    spawnOnce "picom --experimental-backend &"
     spawnOnce "trayer --edge top --align right --width 5 --padding 5 --margin 5 &"
-
+    spawn     "xset r rate 175 40"
 ------------------------------------------------------------------------
 -- Now run xmonad with all the defaults we set up.
 
