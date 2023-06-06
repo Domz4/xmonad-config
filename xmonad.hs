@@ -1,13 +1,17 @@
 -- IMPORTS
-import qualified Data.Map                 as M
+import qualified Data.Map                  as M
 import           Data.Monoid
 import           System.Exit
 import           XMonad
+import           XMonad.Hooks.DynamicLog
+import           XMonad.Hooks.EwmhDesktops
 import           XMonad.Hooks.ManageDocks
+import           XMonad.Hooks.StatusBar
+import           XMonad.Hooks.StatusBar.PP
 import           XMonad.Layout.Spacing
-import qualified XMonad.StackSet          as W
+import qualified XMonad.StackSet           as W
 import           XMonad.Util.Run
-import           XMonad.Util.SpawnOnce    (spawnOnce)
+import           XMonad.Util.SpawnOnce     (spawnOnce)
 
 -- The preferred terminal program, which is used in a binding below and by
 -- certain contrib modules.
@@ -55,7 +59,7 @@ myFocusedBorderColor = "#ff0044"
 myKeys conf@(XConfig {XMonad.modMask = modm}) = M.fromList $
 
     -- launch a terminal
-    [ ((modm .|. shiftMask, xK_Return), spawn $ XMonad.terminal conf)
+    [ ((modm, xK_t), spawn $ XMonad.terminal conf)
 
     -- launch dmenu
     , ((modm,               xK_p     ), spawn "dmenu_run")
@@ -64,10 +68,10 @@ myKeys conf@(XConfig {XMonad.modMask = modm}) = M.fromList $
     , ((modm .|. shiftMask, xK_p     ), spawn "gmrun")
     , ((modm .|. shiftMask, xK_f     ), spawn "firefox" )
     -- close focused window
-    , ((modm .|. shiftMask, xK_c     ), kill)
+    , ((modm, xK_x), kill)
 
     -- | OPEN firefox developer edition app
-    , ((modm, xK_f  ), spawn "/opt/firefox-dev/firefox")
+    , ((modm, xK_f), spawn "/opt/firefox-dev/firefox")
     -- | OPEN spotify app
     , ((modm .|. shiftMask, xK_s ), spawn "spotify")
     -- | OPEN Obsidian app
@@ -108,7 +112,7 @@ myKeys conf@(XConfig {XMonad.modMask = modm}) = M.fromList $
     , ((modm,               xK_l     ), sendMessage Expand)
 
     -- Push window back into tiling
-    , ((modm,               xK_t     ), withFocused $ windows . W.sink)
+    , ((modm .|. shiftMask,               xK_t), withFocused $ windows . W.sink)
 
     -- Increment the number of windows in the master area
     , ((modm              , xK_comma ), sendMessage (IncMasterN 1))
@@ -212,7 +216,6 @@ myLayout = avoidStruts $ spacing 4 $ tiled ||| Mirror tiled ||| Full
 --
 myManageHook = composeAll
     [ className =? "MPlayer"        --> doFloat
-    , className =? "Gimp"           --> doFloat
     , resource  =? "desktop_window" --> doIgnore
     , resource  =? "kdesktop"       --> doIgnore ]
 
@@ -228,14 +231,6 @@ myManageHook = composeAll
 myEventHook = mempty
 
 ------------------------------------------------------------------------
--- Status bars and logging
-
--- Perform an arbitrary action on each internal state change or X event.
--- See the 'XMonad.Hooks.DynamicLog' extension for examples.
---
-myLogHook = return ()
-
-------------------------------------------------------------------------
 -- Startup hook
 
 -- Perform an arbitrary action each time xmonad starts or is restarted
@@ -246,7 +241,7 @@ myLogHook = return ()
 myStartupHook = do
     spawnOnce "nitrogen --restore &"
     spawnOnce "picom --experimental-backend &"
-    spawnOnce "trayer --edge top --align right --width 5 --padding 5 --margin 5 &"
+    spawnOnce "trayer -x 0 --edge top --align right --width 5 --padding 5 --margin 5 &"
     spawn     "xset r rate 175 40"
 ------------------------------------------------------------------------
 -- Now run xmonad with all the defaults we set up.
@@ -255,14 +250,15 @@ myStartupHook = do
 --
 main = do
   xmproc <- spawnPipe "xmobar -x 0 ~/.config/xmobar/xmobarrc"
-  xmonad $ docks defaults
+  xmonad . ewmhFullscreen . ewmh . xmobarProp $ docks (defaults xmproc)
 -- A structure containing your configuration settings, overriding
 -- fields in the default config. Any you don't override, will
 -- use the defaults defined in xmonad/XMonad/Config.hs
 --
 -- No need to modify this.
 --
-defaults = def {
+
+defaults xmproc = def {
       -- simple stuff
         terminal           = myTerminal,
         focusFollowsMouse  = myFocusFollowsMouse,
@@ -281,7 +277,15 @@ defaults = def {
         layoutHook         = myLayout,
         manageHook         = myManageHook,
         handleEventHook    = myEventHook,
-        logHook            = myLogHook,
+
+        logHook            = dynamicLogWithPP $ xmobarPP
+          { ppOutput = hPutStrLn xmproc
+          , ppCurrent = xmobarColor "#fc0049" "" . wrap "|" "|"
+          , ppVisible = xmobarColor "#f07d96" ""
+          , ppHidden = xmobarColor "#9984bb" "" . wrap "*" ""
+          , ppExtras = []
+          , ppOrder = \(ws:_) -> [ws]
+          },
         startupHook        = myStartupHook
     }
 
