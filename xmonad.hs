@@ -1,17 +1,19 @@
 -- IMPORTS
-import qualified Data.Map                  as M
+import qualified Data.Map                    as M
 import           Data.Monoid
 import           System.Exit
 import           XMonad
 import           XMonad.Hooks.DynamicLog
 import           XMonad.Hooks.EwmhDesktops
 import           XMonad.Hooks.ManageDocks
+import           XMonad.Hooks.ManageHelpers
 import           XMonad.Hooks.StatusBar
 import           XMonad.Hooks.StatusBar.PP
 import           XMonad.Layout.Spacing
-import qualified XMonad.StackSet           as W
+import qualified XMonad.StackSet             as W
+import           XMonad.Util.NamedScratchpad
 import           XMonad.Util.Run
-import           XMonad.Util.SpawnOnce     (spawnOnce)
+import           XMonad.Util.SpawnOnce       (spawnOnce)
 
 -- The preferred terminal program, which is used in a binding below and by
 -- certain contrib modules.
@@ -137,19 +139,15 @@ myKeys conf@(XConfig {XMonad.modMask = modm}) = M.fromList $
     ]
     ++
 
-    --
     -- mod-[1..9], Switch to workspace N
     -- mod-shift-[1..9], Move client to workspace N
-    --
     [((m .|. modm, k), windows $ f i)
         | (i, k) <- zip (XMonad.workspaces conf) [xK_1 .. xK_9]
         , (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)]]
     ++
 
-    --
     -- mod-{w,e,r}, Switch to physical/Xinerama screens 1, 2, or 3
     -- mod-shift-{w,e,r}, Move client to screen 1, 2, or 3
-    --
     [((m .|. modm, key), screenWorkspace sc >>= flip whenJust (windows . f))
         | (key, sc) <- zip [xK_w, xK_e, xK_r] [0..]
         , (f, m) <- [(W.view, 0), (W.shift, shiftMask)]]
@@ -157,7 +155,6 @@ myKeys conf@(XConfig {XMonad.modMask = modm}) = M.fromList $
 
 ------------------------------------------------------------------------
 -- Mouse bindings: default actions bound to mouse events
---
 myMouseBindings (XConfig {XMonad.modMask = modm}) = M.fromList $
 
     -- mod-button1, Set the window to floating mode and move by dragging
@@ -217,7 +214,9 @@ myLayout = avoidStruts $ spacing 4 $ tiled ||| Mirror tiled ||| Full
 myManageHook = composeAll
     [ className =? "MPlayer"        --> doFloat
     , resource  =? "desktop_window" --> doIgnore
-    , resource  =? "kdesktop"       --> doIgnore ]
+    , resource  =? "kdesktop"       --> doIgnore
+    , className =? "copyq"          --> doFloat
+    ]
 
 ------------------------------------------------------------------------
 -- Event handling
@@ -236,27 +235,20 @@ myEventHook = mempty
 -- Perform an arbitrary action each time xmonad starts or is restarted
 -- with mod-q.  Used by, e.g., XMonad.Layout.PerWorkspace to initialize
 -- per-workspace layout choices.
---
--- By default, do nothing.
+
 myStartupHook = do
     spawnOnce "nitrogen --restore &"
     spawnOnce "picom --experimental-backend &"
-    spawnOnce "trayer -x 0 --edge top --align right --width 5 --padding 5 --margin 5 &"
-    spawn     "xset r rate 175 40"
+    spawnOnce "blueman-manager &"
+    spawnOnce "copyq &"
+    -- open trayer
+    -- spawn ("trayer --edge top --align right --widthtype request --padding 6 --SetDockType true --SetPartialStrut true --expand true --monitor 1 --transparent true --alpha 0 --tint 0x282c34 --height 22")
+    spawn "xset r rate 175 40"
 ------------------------------------------------------------------------
--- Now run xmonad with all the defaults we set up.
 
--- Run xmonad with the settings you specify. No need to modify this.
---
 main = do
   xmproc <- spawnPipe "xmobar -x 0 ~/.config/xmobar/xmobarrc"
-  xmonad . ewmhFullscreen . ewmh . xmobarProp $ docks (defaults xmproc)
--- A structure containing your configuration settings, overriding
--- fields in the default config. Any you don't override, will
--- use the defaults defined in xmonad/XMonad/Config.hs
---
--- No need to modify this.
---
+  xmonad . ewmh . xmobarProp $ docks (defaults xmproc)
 
 defaults xmproc = def {
       -- simple stuff
@@ -283,13 +275,15 @@ defaults xmproc = def {
           , ppCurrent = xmobarColor "#fc0049" "" . wrap "|" "|"
           , ppVisible = xmobarColor "#f07d96" ""
           , ppHidden = xmobarColor "#9984bb" "" . wrap "*" ""
+          , ppHiddenNoWindows = xmobarColor "#555555" ""
           , ppExtras = []
           , ppOrder = \(ws:_) -> [ws]
           },
         startupHook        = myStartupHook
     }
 
--- | Finally, a copy of the default bindings in simple textual tabular format.
+-- Keyboard shortcuts docs
+
 help :: String
 help = unlines ["The default modifier key is 'alt'. Default keybindings:",
     "",
@@ -338,4 +332,5 @@ help = unlines ["The default modifier key is 'alt'. Default keybindings:",
     "-- Mouse bindings: default actions bound to mouse events",
     "mod-button1  Set the window to floating mode and move by dragging",
     "mod-button2  Raise the window to the top of the stack",
-    "mod-button3  Set the window to floating mode and resize by dragging"]
+    "mod-button3  Set the window to floating mode and resize by dragging"
+    ]
